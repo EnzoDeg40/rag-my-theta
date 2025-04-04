@@ -1,6 +1,8 @@
 import fitz  # PyMuPDF
 import os
 
+import db
+
 def read_pdf_to_string(pdf_path):
     pdf_text = ""
     with fitz.open(pdf_path) as pdf_document:
@@ -27,4 +29,11 @@ if __name__ == "__main__":
         print(f"Reading file: {pdf_file}")
         pdf_content = read_pdf_to_string(pdf_file)
         print(f"Content of {pdf_file}:\n{pdf_content}\n")
+
+        collection_manager = db.PDFCollectionManager()
+        collection_manager.add_document(
+            file_path=pdf_file,
+            title=os.path.basename(pdf_file),
+            content=pdf_content
+        )
         
