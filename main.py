@@ -33,7 +33,5 @@ if __name__ == "__main__":
         collection_manager = db.PDFCollectionManager()
         collection_manager.add_document(
             file_path=pdf_file,
-            title=os.path.basename(pdf_file),
             content=pdf_content
         )
-        
