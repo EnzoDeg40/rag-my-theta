@@ -59,10 +59,20 @@ class PDFCollectionManager:
             return_properties=True
         )
 
+        table = []
+
         for obj in results.objects:
-            print("Properties:", obj.properties)
-            print("Distance:", obj.metadata.distance)
-            print("----")
+            table.append({
+                "content": obj.properties["content"],
+                "file": obj.properties["file"],
+                "distance": obj.metadata.distance
+            })
+        
+        return table
+
+    def print_search_results(self, results):
+        for result in results:
+            print(result)
 
     def close(self):
         self.client.close()
@@ -70,6 +80,9 @@ class PDFCollectionManager:
 
 if __name__ == "__main__":
     manager = PDFCollectionManager()
-    manager.remove_collection()
-    manager.create_collection()
+    # manager.remove_collection()
+    # manager.create_collection()
+    manager.print_search_results(
+        manager.search("What is the capital of France?")
+    )
     manager.close()

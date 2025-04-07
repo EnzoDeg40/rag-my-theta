@@ -9,7 +9,12 @@ db = PDFCollectionManager()
 class InputData(BaseModel):
     text: str
 
-@app.post("/hotels", response_model=List[str])
+class SearchResult(BaseModel):
+    content: str
+    file: str
+    distance: float
+    
+@app.post("/hotels", response_model=List[SearchResult])
 def process_text(data: InputData):
-    words = data.text.split()
-    return words
+    results = db.search(data.text)
+    return results
