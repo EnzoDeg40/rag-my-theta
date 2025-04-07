@@ -59,16 +59,16 @@ class PDFCollectionManager:
             return_properties=True
         )
 
-        table = []
+        results_list = []
 
         for obj in results.objects:
-            table.append({
+            results_list.append({
                 "content": obj.properties["content"],
                 "file": obj.properties["file"],
                 "distance": obj.metadata.distance
             })
         
-        return table
+        return results_list
 
     def print_search_results(self, results):
         for result in results:
