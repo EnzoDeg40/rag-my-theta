@@ -15,8 +15,12 @@ class PDFCollectionManager:
             device = "cuda"
         if torch.backends.mps.is_available():
             device = "mps"
+        print(f"Using device: {device}")
 
         self.model = SentenceTransformer(self.model_name, device=device)
+
+    def __del__(self):
+        self.close()
 
     def create_collection(self):
         if self.client.collections.exists(self.collection_name):
@@ -49,6 +53,8 @@ class PDFCollectionManager:
         print(f"Document '{file_path}' added to collection.")
 
     def close(self):
+        if self.client is None:
+            return
         self.client.close()
         print("Client closed.")
 
@@ -56,4 +62,4 @@ if __name__ == "__main__":
     manager = PDFCollectionManager()
     manager.remove_collection()
     manager.create_collection()
-
+    manager.close()

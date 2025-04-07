@@ -9,7 +9,7 @@
 ### Database
 You can install Weaviate using Docker. The following command will pull the latest Weaviate image and run it:
 
-```
+```bash
 docker run -d -p 8080:8080 -p 50051:50051 cr.weaviate.io/semitechnologies/weaviate:1.30.0
 ```
 
