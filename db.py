@@ -19,9 +19,6 @@ class PDFCollectionManager:
 
         self.model = SentenceTransformer(self.model_name, device=device)
 
-    def __del__(self):
-        self.close()
-
     def create_collection(self):
         if self.client.collections.exists(self.collection_name):
             print("Collection already exists.")
@@ -52,9 +49,22 @@ class PDFCollectionManager:
         }, vector=vector)
         print(f"Document '{file_path}' added to collection.")
 
+    def search(self, query: str):
+        vector = self.model.encode(query, convert_to_tensor=True).cpu().tolist()
+
+        results = self.client.collections.get(self.collection_name).query.near_vector(
+            near_vector=vector,
+            limit=10,
+            return_metadata=["distance"],  # or 'certainty'
+            return_properties=True
+        )
+
+        for obj in results.objects:
+            print("Properties:", obj.properties)
+            print("Distance:", obj.metadata.distance)
+            print("----")
+
     def close(self):
-        if self.client is None:
-            return
         self.client.close()
         print("Client closed.")
 
