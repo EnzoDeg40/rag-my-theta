@@ -26,11 +26,10 @@ if __name__ == "__main__":
     pdf_files = list_pdf_files_in_folder(folder_path)
 
     collection_manager = db.PDFCollectionManager()
-    
+    collection_manager.create_collection()
+
     for i, pdf_file in enumerate(pdf_files):
-        print(f"Reading file {i + 1}/{len(pdf_files)}: {pdf_file}")
         pdf_content = read_pdf_to_string(pdf_file)
-        print(f"Content of {pdf_file}:\n{pdf_content}\n")
 
         collection_manager.add_document(
             file_path=pdf_file,
