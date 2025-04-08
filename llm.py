@@ -15,7 +15,7 @@ class LLM:
             results = self.db.search(text, limit=3)
             context = "\n\n".join([f'## File {r["file"]}: {r["content"]}' for r in results])
         
-        sys = """You are an AI specialized as a travel agency assistant.  
+        system_instruction = """You are an AI specialized as a travel agency assistant.  
         Your task is to answer the user's question based on the provided context, which consists of PDF documents.  
         If the information in the PDFs is not sufficient to provide an accurate answer, you must clearly state that you cannot answer.  
         You may also answer general questions, as long as they relate to travel, trip planning, or finding accommodation.  
@@ -25,7 +25,7 @@ class LLM:
         At the end of each answer, you must cite the sources — specifically the names of the PDF files where the information was found.
         """
 
-        prompt = f"Context: {context}\n\n{sys}"
+        prompt = f"Context: {context}\n\n{system_instruction}"
 
         response = completion(
             model=self.model,
