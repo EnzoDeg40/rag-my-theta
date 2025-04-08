@@ -13,7 +13,7 @@ class LLM:
 
         if use_vector_db:
             results = self.db.search(text, limit=3)
-            context = "\n\n".join([f'## File {r["file"]}): {r["content"]}' for r in results])
+            context = "\n\n".join([f'## File {r["file"]}: {r["content"]}' for r in results])
         
         sys = """You are an AI specialized as a travel agency assistant.  
         Your task is to answer the user's question based on the provided context, which consists of PDF documents.  
