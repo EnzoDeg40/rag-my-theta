@@ -12,6 +12,7 @@ class LLM:
         context = "Aucun contexte trouvé."
 
         if use_vector_db:
+            print(f"Searching to vector DB...")
             results = self.db.search(text, limit=3)
             context = "\n\n".join([f'## File {r["file"]}: {r["content"]}' for r in results])
         
@@ -27,6 +28,7 @@ class LLM:
 
         prompt = f"Context: {context}\n\n{system_instruction}"
 
+        print(f"Asking LLM...")
         response = completion(
             model=self.model,
             messages=[
@@ -34,7 +36,7 @@ class LLM:
                 {"content": text, "role": "user"}],
             api_base=self.api_base
         )
-        return response
+        return response.get("choices", [{}])[-1].get("message", {}).get("content", "")
 
 if __name__ == "__main__":
     llm = LLM()
