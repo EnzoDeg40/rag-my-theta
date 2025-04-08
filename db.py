@@ -49,12 +49,12 @@ class PDFCollectionManager:
         }, vector=vector)
         print(f"Document '{file_path}' added to collection.")
 
-    def search(self, query: str):
+    def search(self, query: str, limit: int = 10):
         vector = self.model.encode(query, convert_to_tensor=True).cpu().tolist()
 
         results = self.client.collections.get(self.collection_name).query.near_vector(
             near_vector=vector,
-            limit=10,
+            limit=limit,
             return_metadata=["distance"],  # or 'certainty'
             return_properties=True
         )
