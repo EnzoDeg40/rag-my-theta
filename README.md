@@ -26,3 +26,10 @@ Install the required Python packages using pip :
 ```bash
 pip install -r requirements.txt
 ```
+
+## Usage
+
+Run the following command to start the API server:
+```bash
+uvicorn api:app
+```

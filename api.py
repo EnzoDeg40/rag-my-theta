@@ -1,20 +1,16 @@
 from fastapi import FastAPI
 from pydantic import BaseModel
-from typing import List
-from db import PDFCollectionManager
+from llm import LLM
 
 app = FastAPI()
-db = PDFCollectionManager()
+ai = LLM()
 
 class InputData(BaseModel):
     text: str
 
-class SearchResult(BaseModel):
-    content: str
-    file: str
-    distance: float
-    
-@app.post("/hotels", response_model=List[SearchResult])
+@app.post("/hotels", response_model=str)
 def process_text(data: InputData):
-    results = db.search(data.text)
-    return results
+    print("Processes the client's request...")
+    response = ai.ask(data.text)
+    print(f"LLM Response: {response}")
+    return str(response)
