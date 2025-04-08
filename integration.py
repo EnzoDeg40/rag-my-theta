@@ -21,7 +21,7 @@ def list_pdf_files_in_folder(folder_path):
     return pdf_files
 
 if __name__ == "__main__":
-    folder_path = "THETA_brochures"
+    folder_path = "data"
 
     pdf_files = list_pdf_files_in_folder(folder_path)
 

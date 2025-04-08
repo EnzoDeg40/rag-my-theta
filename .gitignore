@@ -1,3 +1,4 @@
 __pycache__
 venv
-THETA_brochures
+data/*
+!data/.gitkeep

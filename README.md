@@ -29,7 +29,18 @@ pip install -r requirements.txt
 
 ## Usage
 
+Place your PDF files in the `data` folder at the root of the project. Then, inject them into the vector database using the following command:
+
+```bash
+python integration.py
+```
+
 Run the following command to start the API server:
 ```bash
 uvicorn api:app
+```
+
+To test the API, you can use the following command:
+```bash
+./request.bash "<your_query>"
 ```
