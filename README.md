@@ -27,6 +27,10 @@ Install the required Python packages using pip :
 pip install -r requirements.txt
 ```
 
+### LiteLLM
+> [!IMPORTANT]
+> Currently, Litellm connects to the Ollama Mistral model by default. To change this configuration, you need to modify the `llm.py` file at the initialization of the class.
+
 ## Usage
 
 Place your PDF files in the `data` folder at the root of the project. Then, inject them into the vector database using the following command:
@@ -44,3 +48,7 @@ To test the API, you can use the following command:
 ```bash
 ./request.bash "<your_query>"
 ```
+
+## Report
+
+View the technical report in French [here](rapport.md)
