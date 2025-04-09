@@ -44,3 +44,7 @@ To test the API, you can use the following command:
 ```bash
 ./request.bash "<your_query>"
 ```
+
+## Report
+
+View the technical report in French [here](rapport.md)
