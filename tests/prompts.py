@@ -1,12 +1,8 @@
 import requests
 import json
 
-# Liste des prompts de test
 with open("prompts.txt", "r", encoding="utf-8") as file:
     prompts = [line.strip() for line in file if line.strip()]
-
-# Endpoint de l'API FastAPI
-api_url = "http://localhost:8000/hotels"
 
 def test_prompts(prompts):
     for prompt in prompts:
