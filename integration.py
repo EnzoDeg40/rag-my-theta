@@ -1,40 +1,42 @@
 import fitz  # PyMuPDF
 import os
-
 import db
 
-def read_pdf_to_string(pdf_path):
-    pdf_text = ""
-    with fitz.open(pdf_path) as pdf_document:
-        for page_num in range(len(pdf_document)):
-            page = pdf_document[page_num]
-            pdf_text += page.get_text()
-    return pdf_text
+class PDFImporter:
+    def __init__(self, folder_path="data"):
+        self.folder_path = folder_path
+        self.collection_manager = db.PDFCollectionManager()
 
-def list_pdf_files_in_folder(folder_path):
-    pdf_files = []
-    if not os.path.exists(folder_path):
-        return pdf_files
-    for file_name in os.listdir(folder_path):
-        if file_name.lower().endswith('.pdf'):
-            pdf_files.append(os.path.join(folder_path, file_name))
-    return pdf_files
+    def read_pdf_to_string(self, pdf_path):
+        pdf_text = ""
+        with fitz.open(pdf_path) as pdf_document:
+            for page in pdf_document:
+                pdf_text += page.get_text()
+        return pdf_text
+
+    def list_pdf_files_in_folder(self):
+        if not os.path.exists(self.folder_path):
+            return []
+        return [
+            os.path.join(self.folder_path, f)
+            for f in os.listdir(self.folder_path)
+            if f.lower().endswith('.pdf')
+        ]
+
+    def import_pdfs(self):
+        self.collection_manager.create_collection()
+        pdf_files = self.list_pdf_files_in_folder()
+
+        for pdf_file in pdf_files:
+            pdf_content = self.read_pdf_to_string(pdf_file)
+            self.collection_manager.add_document(
+                file_path=pdf_file,
+                content=pdf_content
+            )
+
+        self.collection_manager.close()
+        print("All documents added to the collection.")
 
 if __name__ == "__main__":
-    folder_path = "data"
-
-    pdf_files = list_pdf_files_in_folder(folder_path)
-
-    collection_manager = db.PDFCollectionManager()
-    collection_manager.create_collection()
-
-    for i, pdf_file in enumerate(pdf_files):
-        pdf_content = read_pdf_to_string(pdf_file)
-
-        collection_manager.add_document(
-            file_path=pdf_file,
-            content=pdf_content
-        )
-        
-    collection_manager.close()
-    print("All documents added to the collection.")
+    importer = PDFImporter(folder_path="data")
+    importer.import_pdfs()
