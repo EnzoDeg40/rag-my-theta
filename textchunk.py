@@ -4,7 +4,9 @@ from nltk.tokenize import PunktSentenceTokenizer
 
 class TextChunker:
     def __init__(self, max_tokens=50):
-        if not nltk.download('punkt', quiet=True):
+        try:
+            nltk.data.find('tokenizers/punkt')
+        except LookupError:
             nltk.download('punkt')
         self.max_tokens = max_tokens
         self.tokenizer = PunktSentenceTokenizer()
