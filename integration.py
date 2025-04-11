@@ -18,6 +18,7 @@ class PDFImporter:
             print(f"An error occurred while reading the PDF: {e}")
         if not pdf_text:
             print(f"PDF file '{pdf_path}' is empty or could not be read.")
+        pdf_text = " ".join(pdf_text.split())
         return pdf_text
 
     def list_pdf_files_in_folder(self):
@@ -44,14 +45,13 @@ class PDFImporter:
             textchunker = textchunk.TextChunker(max_tokens=150)
             textlist = textchunker.chunk(pdf_content)
 
-            for i, chunk in enumerate(textlist):
-                print(f"Chunk {i+1} ({textchunker.count_tokens(chunk)} tokens) :\n{chunk}\n\n\n")
-
             self.collection_manager.add_document_chunked(
                 file_path=pdf_file,
                 content=pdf_content,
                 chunk=textlist
             )
+
+            print(f"Document '{pdf_file}' added to collection with {len(textlist)} chunks.")
 
         self.collection_manager.close()
         print("All documents added to the collection.")

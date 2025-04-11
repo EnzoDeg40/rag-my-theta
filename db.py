@@ -74,8 +74,6 @@ class PDFCollectionManager:
                 "chunk": i
             }, vector=vector)
 
-        print(f"Document '{file_path}' added to collection with {len(chunk)} chunks.")
-
     def search(self, query: str, limit: int = 10):
         pdfdoc = self.client.collections.get(self.collection_name)
         vector = self.model.encode(query, convert_to_tensor=True).cpu().tolist()
