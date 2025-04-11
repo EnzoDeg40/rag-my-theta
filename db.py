@@ -31,6 +31,7 @@ class PDFCollectionManager:
             properties=[
                 wvc.config.Property(name="content", data_type=wvc.config.DataType.TEXT),
                 wvc.config.Property(name="file", data_type=wvc.config.DataType.TEXT),
+                wvc.config.Property(name="chunk", data_type=wvc.config.DataType.NUMBER),
             ],
             vectorizer_config=wvc.config.Configure.Vectorizer.none(),
         )
@@ -54,9 +55,24 @@ class PDFCollectionManager:
         pdfdoc.data.insert({
             "content": content,
             "file": file_path,
+            "chunk": 0
         }, vector=vector)
         print(f"Document '{file_path}' added to collection.")
 
+    def add_document_chunked(self, file_path: str, content: str, chunk: list[str]):
+        pdfdoc = self.client.collections.get(self.collection_name)
+
+        if self.is_document_in_collection(file_path, pdfdoc):
+            print(f"Document '{file_path}' already exists in the collection.")
+            return
+
+        for i, chunk_text in enumerate(chunk):
+            vector = self.model.encode(chunk_text, convert_to_tensor=True).cpu().tolist()
+            pdfdoc.data.insert({
+                "content": chunk_text,
+                "file": file_path,
+                "chunk": i
+            }, vector=vector)
 
     def search(self, query: str, limit: int = 10):
         pdfdoc = self.client.collections.get(self.collection_name)
@@ -75,6 +91,7 @@ class PDFCollectionManager:
             results_list.append({
                 "content": obj.properties["content"],
                 "file": obj.properties["file"],
+                "chunk": obj.properties["chunk"],
                 "distance": obj.metadata.distance
             })
         
