@@ -31,6 +31,7 @@ class PDFCollectionManager:
             properties=[
                 wvc.config.Property(name="content", data_type=wvc.config.DataType.TEXT),
                 wvc.config.Property(name="file", data_type=wvc.config.DataType.TEXT),
+                wvc.config.Property(name="chunk", data_type=wvc.config.DataType.NUMBER),
             ],
             vectorizer_config=wvc.config.Configure.Vectorizer.none(),
         )
