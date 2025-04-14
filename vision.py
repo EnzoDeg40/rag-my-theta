@@ -10,6 +10,7 @@ class ImageDescriber:
             self.device = torch.device("cuda")
         else:
             self.device = torch.device("cpu")
+        print(f"Using device for {__class__.__name__}: {self.device}")
 
         # Load the BLIP model and processor
         self.processor = BlipProcessor.from_pretrained("Salesforce/blip-image-captioning-large")

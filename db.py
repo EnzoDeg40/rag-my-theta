@@ -13,14 +13,14 @@ class PDFCollectionManager:
 
         self.client = weaviate.connect_to_local()
        
-        device = "cpu"
+        self.device = "cpu"
         if torch.cuda.is_available():
-            device = "cuda"
+            self.device = "cuda"
         elif torch.backends.mps.is_available():
-            device = "mps"
-        print(f"Using device: {device}")
+            self.device = "mps"
+        print(f"Using device for {__class__.__name__}: {self.device}")
 
-        self.model = SentenceTransformer(self.model_name, device=device)
+        self.model = SentenceTransformer(self.model_name, device=self.device)
 
     def create_collection(self):
         if self.client.collections.exists(self.collection_name):
@@ -51,7 +51,7 @@ class PDFCollectionManager:
             print(f"Document '{file_path}' already exists in the collection.")
             return
         
-        vector = self.model.encode(content, convert_to_tensor=True).cpu().tolist()
+        vector = self.model.encode(content, convert_to_tensor=True).to(self.device).tolist()
         pdfdoc.data.insert({
             "content": content,
             "file": file_path,
@@ -67,7 +67,7 @@ class PDFCollectionManager:
             return
 
         for i, chunk_text in enumerate(chunk):
-            vector = self.model.encode(chunk_text, convert_to_tensor=True).cpu().tolist()
+            vector = self.model.encode(chunk_text, convert_to_tensor=True).to(self.device).tolist()
             pdfdoc.data.insert({
                 "content": chunk_text,
                 "file": file_path,
@@ -76,7 +76,7 @@ class PDFCollectionManager:
 
     def search(self, query: str, limit: int = 10):
         pdfdoc = self.client.collections.get(self.collection_name)
-        vector = self.model.encode(query, convert_to_tensor=True).cpu().tolist()
+        vector = self.model.encode(query, convert_to_tensor=True).to(self.device).tolist()
 
         results = pdfdoc.query.near_vector(
             near_vector=vector,
