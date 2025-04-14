@@ -45,14 +45,14 @@ class PDFCollectionManager:
         self.client.collections.delete(self.collection_name)
         print(f"Collection '{self.collection_name}' removed.")
    
-    def add_document_chunked(self, file_path: str, content: str, chunk: list[str]):
+    def add_document_chunked(self, file_path: str, chunk_text: list[str], images: list = None):
         pdfdoc = self.client.collections.get(self.collection_name)
 
         if self.is_document_in_collection(file_path, pdfdoc):
             print(f"Document '{file_path}' already exists in the collection.")
             return
 
-        for i, chunk_text in enumerate(chunk):
+        for i, chunk_text in enumerate(chunk_text):
             vector = self.model.encode(chunk_text, convert_to_tensor=True).to(self.device).tolist()
             pdfdoc.data.insert({
                 "content": chunk_text,
@@ -60,6 +60,17 @@ class PDFCollectionManager:
                 "chunk": i,
                 "type": "text"
             }, vector=vector)
+    
+        if images:
+            for i, image in enumerate(images):
+                vector = self.model.encode(image, convert_to_tensor=True).to(self.device).tolist()
+                pdfdoc.data.insert({
+                    "content": image,
+                    "file": file_path,
+                    "chunk": i,
+                    "type": "image"
+                }, vector=vector)
+        
 
     def search(self, query: str, limit: int = 10):
         pdfdoc = self.client.collections.get(self.collection_name)

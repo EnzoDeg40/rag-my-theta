@@ -1,13 +1,20 @@
 import fitz  # PyMuPDF
 import os
+import io
 import db
 import textchunk
 import vision
+from PIL import Image
+
 
 class PDFImporter:
     def __init__(self, folder_path="data"):
         self.folder_path = folder_path
         self.collection_manager = db.PDFCollectionManager()
+        self.vision = vision.ImageDescriber()
+
+    def pixmap_to_pil(self, pixmap):
+        return Image.open(io.BytesIO(pixmap.tobytes("png")))
 
     def read_pdf_to_string(self, pdf_path):
         pdf_text = ""
@@ -56,18 +63,24 @@ class PDFImporter:
                 continue
 
             pdf_content = self.read_pdf_to_string(pdf_file)
-            pdf_images = self.read_pdf_to_images(pdf_file)
-            
+        
+            pdf_images = []
+            pixmaps = self.read_pdf_to_images(pdf_file)
+            for pixmap in pixmaps:
+                pil_image = self.pixmap_to_pil(pixmap)
+                caption = self.vision.describe_image(pil_image)
+                pdf_images.append(caption)
+
             textchunker = textchunk.TextChunker(max_tokens=150)
             textlist = textchunker.chunk(pdf_content)
 
             self.collection_manager.add_document_chunked(
                 file_path=pdf_file,
-                content=pdf_content,
-                chunk=textlist
+                chunk_text=textlist,
+                images=pdf_images,
             )
 
-            print(f"Document '{pdf_file}' added to collection with {len(textlist)} chunks.")
+            print(f"Document '{pdf_file}' added to collection with {len(textlist)} chunks text and {len(pdf_images)} images.")
 
         self.collection_manager.close()
         print("All documents added to the collection.")

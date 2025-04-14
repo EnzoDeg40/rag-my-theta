@@ -16,12 +16,14 @@ class ImageDescriber:
         self.processor = BlipProcessor.from_pretrained("Salesforce/blip-image-captioning-large")
         self.model = BlipForConditionalGeneration.from_pretrained("Salesforce/blip-image-captioning-large").to(self.device)
 
-    def describe_image(self, image_path: str) -> str:
-        # Load and prepare the image
-        image = Image.open(image_path).convert('RGB')
+    def describe_image(self, image) -> str:
+        if not image.mode == 'RGB':
+            image = image.convert('RGB')
+
+        # Préparer l'image
         inputs = self.processor(image, return_tensors="pt").to(self.device)
 
-        # Generate a description
+        # Générer une description
         with torch.no_grad():
             out = self.model.generate(**inputs, max_new_tokens=200)
 
