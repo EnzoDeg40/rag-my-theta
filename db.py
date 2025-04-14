@@ -32,6 +32,7 @@ class PDFCollectionManager:
                 wvc.config.Property(name="content", data_type=wvc.config.DataType.TEXT),
                 wvc.config.Property(name="file", data_type=wvc.config.DataType.TEXT),
                 wvc.config.Property(name="chunk", data_type=wvc.config.DataType.NUMBER),
+                wvc.config.Property(name="type", data_type=wvc.config.DataType.TEXT),
             ],
             vectorizer_config=wvc.config.Configure.Vectorizer.none(),
         )
@@ -71,7 +72,8 @@ class PDFCollectionManager:
             pdfdoc.data.insert({
                 "content": chunk_text,
                 "file": file_path,
-                "chunk": i
+                "chunk": i,
+                "type": "text"
             }, vector=vector)
 
     def search(self, query: str, limit: int = 10):

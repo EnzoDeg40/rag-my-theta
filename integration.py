@@ -21,6 +21,19 @@ class PDFImporter:
             print(f"PDF file '{pdf_path}' is empty or could not be read.")
         pdf_text = " ".join(pdf_text.split())
         return pdf_text
+    
+    def read_pdf_to_images(self, pdf_path: str) -> list:
+        pdf_images = []
+        try:
+            with fitz.open(pdf_path) as pdf_document:
+                for page_number in range(min(3, len(pdf_document))):
+                    page = pdf_document[page_number]
+                    pdf_images.append(page.get_pixmap())
+        except Exception as e:
+            print(f"An error occurred while reading the PDF: {e}")
+        if not pdf_images:
+            print(f"PDF file '{pdf_path}' is empty or could not be read.")
+        return pdf_images
 
     def list_pdf_files_in_folder(self):
         if not os.path.exists(self.folder_path):
@@ -43,6 +56,8 @@ class PDFImporter:
                 continue
 
             pdf_content = self.read_pdf_to_string(pdf_file)
+            pdf_images = self.read_pdf_to_images(pdf_file)
+            
             textchunker = textchunk.TextChunker(max_tokens=150)
             textlist = textchunker.chunk(pdf_content)
 
