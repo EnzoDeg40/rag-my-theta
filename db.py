@@ -45,21 +45,6 @@ class PDFCollectionManager:
         self.client.collections.delete(self.collection_name)
         print(f"Collection '{self.collection_name}' removed.")
    
-    def add_document(self, file_path: str, content: str):
-        pdfdoc = self.client.collections.get(self.collection_name)
-
-        if self.is_document_in_collection(file_path, pdfdoc):
-            print(f"Document '{file_path}' already exists in the collection.")
-            return
-        
-        vector = self.model.encode(content, convert_to_tensor=True).to(self.device).tolist()
-        pdfdoc.data.insert({
-            "content": content,
-            "file": file_path,
-            "chunk": 0
-        }, vector=vector)
-        print(f"Document '{file_path}' added to collection.")
-
     def add_document_chunked(self, file_path: str, content: str, chunk: list[str]):
         pdfdoc = self.client.collections.get(self.collection_name)
 
