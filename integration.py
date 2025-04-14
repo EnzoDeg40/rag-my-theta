@@ -2,6 +2,7 @@ import fitz  # PyMuPDF
 import os
 import db
 import textchunk
+import vision
 
 class PDFImporter:
     def __init__(self, folder_path="data"):
