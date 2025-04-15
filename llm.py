@@ -76,7 +76,7 @@ At the end of each answer, you must cite the sources — specifically the names 
             api_base=self.api_base
         )
         llm_reply = response.get("choices", [{}])[-1].get("message", {}).get("content", "")
-        conversation.append({"role": "llm", "content": llm_reply})
+        conversation.append({"role": "assistant", "content": llm_reply})
         return conversation
 
 if __name__ == "__main__":
