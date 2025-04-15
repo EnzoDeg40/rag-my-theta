@@ -94,6 +94,30 @@ class PDFCollectionManager:
             })
         
         return results_list
+    
+    def search_in_file(self, file_path: str, query: str, limit: int = 10):
+        pdfdoc = self.client.collections.get(self.collection_name)
+        vector = self.model.encode(query, convert_to_tensor=True).to(self.device).tolist()
+
+        results = pdfdoc.query.near_vector(
+            near_vector=vector,
+            filters=wvc.query.Filter.by_property("file").equal(file_path),
+            limit=limit,
+            return_metadata=["distance"],  # or 'certainty'
+            return_properties=True
+        )
+
+        results_list = []
+
+        for obj in results.objects:
+            results_list.append({
+                "content": obj.properties["content"],
+                "file": obj.properties["file"],
+                "chunk": obj.properties["chunk"],
+                "distance": obj.metadata.distance
+            })
+
+        return results_list
 
     def print_search_results(self, results):
         for result in results:
@@ -111,6 +135,11 @@ class PDFCollectionManager:
 
 if __name__ == "__main__":
     manager = PDFCollectionManager()
-    manager.remove_collection()
-    manager.create_collection()
+    # manager.remove_collection()
+    # manager.create_collection()
+    
+    search_results = manager.search_in_file("BLM.pdf", "Quels sont les transports disponibles ?", limit=3)
+    print("Search results:")
+    manager.print_search_results(search_results)
+    
     manager.close()
