@@ -13,14 +13,14 @@ class PDFCollectionManager:
 
         self.client = weaviate.connect_to_local()
        
-        device = "cpu"
+        self.device = "cpu"
         if torch.cuda.is_available():
-            device = "cuda"
+            self.device = "cuda"
         elif torch.backends.mps.is_available():
-            device = "mps"
-        print(f"Using device: {device}")
+            self.device = "mps"
+        print(f"Using device for {__class__.__name__}: {self.device}")
 
-        self.model = SentenceTransformer(self.model_name, device=device)
+        self.model = SentenceTransformer(self.model_name, device=self.device)
 
     def create_collection(self):
         if self.client.collections.exists(self.collection_name):
@@ -32,6 +32,7 @@ class PDFCollectionManager:
                 wvc.config.Property(name="content", data_type=wvc.config.DataType.TEXT),
                 wvc.config.Property(name="file", data_type=wvc.config.DataType.TEXT),
                 wvc.config.Property(name="chunk", data_type=wvc.config.DataType.NUMBER),
+                wvc.config.Property(name="type", data_type=wvc.config.DataType.TEXT),
             ],
             vectorizer_config=wvc.config.Configure.Vectorizer.none(),
         )
@@ -44,39 +45,36 @@ class PDFCollectionManager:
         self.client.collections.delete(self.collection_name)
         print(f"Collection '{self.collection_name}' removed.")
    
-    def add_document(self, file_path: str, content: str):
-        pdfdoc = self.client.collections.get(self.collection_name)
-
-        if self.is_document_in_collection(file_path, pdfdoc):
-            print(f"Document '{file_path}' already exists in the collection.")
-            return
-        
-        vector = self.model.encode(content, convert_to_tensor=True).cpu().tolist()
-        pdfdoc.data.insert({
-            "content": content,
-            "file": file_path,
-            "chunk": 0
-        }, vector=vector)
-        print(f"Document '{file_path}' added to collection.")
-
-    def add_document_chunked(self, file_path: str, content: str, chunk: list[str]):
+    def add_document_chunked(self, file_path: str, chunk_text: list[str], images: list = None):
         pdfdoc = self.client.collections.get(self.collection_name)
 
         if self.is_document_in_collection(file_path, pdfdoc):
             print(f"Document '{file_path}' already exists in the collection.")
             return
 
-        for i, chunk_text in enumerate(chunk):
-            vector = self.model.encode(chunk_text, convert_to_tensor=True).cpu().tolist()
+        for i, chunk_text in enumerate(chunk_text):
+            vector = self.model.encode(chunk_text, convert_to_tensor=True).to(self.device).tolist()
             pdfdoc.data.insert({
                 "content": chunk_text,
                 "file": file_path,
-                "chunk": i
+                "chunk": i,
+                "type": "text"
             }, vector=vector)
+    
+        if images:
+            for i, image in enumerate(images):
+                vector = self.model.encode(image, convert_to_tensor=True).to(self.device).tolist()
+                pdfdoc.data.insert({
+                    "content": image,
+                    "file": file_path,
+                    "chunk": i,
+                    "type": "image"
+                }, vector=vector)
+        
 
     def search(self, query: str, limit: int = 10):
         pdfdoc = self.client.collections.get(self.collection_name)
-        vector = self.model.encode(query, convert_to_tensor=True).cpu().tolist()
+        vector = self.model.encode(query, convert_to_tensor=True).to(self.device).tolist()
 
         results = pdfdoc.query.near_vector(
             near_vector=vector,

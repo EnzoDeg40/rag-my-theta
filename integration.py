@@ -1,12 +1,20 @@
 import fitz  # PyMuPDF
 import os
+import io
 import db
 import textchunk
+import vision
+from PIL import Image
+
 
 class PDFImporter:
     def __init__(self, folder_path="data"):
         self.folder_path = folder_path
         self.collection_manager = db.PDFCollectionManager()
+        self.vision = vision.ImageDescriber()
+
+    def pixmap_to_pil(self, pixmap):
+        return Image.open(io.BytesIO(pixmap.tobytes("png")))
 
     def read_pdf_to_string(self, pdf_path):
         pdf_text = ""
@@ -20,6 +28,19 @@ class PDFImporter:
             print(f"PDF file '{pdf_path}' is empty or could not be read.")
         pdf_text = " ".join(pdf_text.split())
         return pdf_text
+    
+    def read_pdf_to_images(self, pdf_path: str) -> list:
+        pdf_images = []
+        try:
+            with fitz.open(pdf_path) as pdf_document:
+                for page_number in range(min(3, len(pdf_document))):
+                    page = pdf_document[page_number]
+                    pdf_images.append(page.get_pixmap())
+        except Exception as e:
+            print(f"An error occurred while reading the PDF: {e}")
+        if not pdf_images:
+            print(f"PDF file '{pdf_path}' is empty or could not be read.")
+        return pdf_images
 
     def list_pdf_files_in_folder(self):
         if not os.path.exists(self.folder_path):
@@ -42,16 +63,24 @@ class PDFImporter:
                 continue
 
             pdf_content = self.read_pdf_to_string(pdf_file)
+        
+            pdf_images = []
+            pixmaps = self.read_pdf_to_images(pdf_file)
+            for pixmap in pixmaps:
+                pil_image = self.pixmap_to_pil(pixmap)
+                caption = self.vision.describe_image(pil_image)
+                pdf_images.append(caption)
+
             textchunker = textchunk.TextChunker(max_tokens=150)
             textlist = textchunker.chunk(pdf_content)
 
             self.collection_manager.add_document_chunked(
                 file_path=pdf_file,
-                content=pdf_content,
-                chunk=textlist
+                chunk_text=textlist,
+                images=pdf_images,
             )
 
-            print(f"Document '{pdf_file}' added to collection with {len(textlist)} chunks.")
+            print(f"Document '{pdf_file}' added to collection with {len(textlist)} chunks text and {len(pdf_images)} images.")
 
         self.collection_manager.close()
         print("All documents added to the collection.")
