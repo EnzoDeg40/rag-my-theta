@@ -20,13 +20,9 @@ class ImageDescriber:
         if not image.mode == 'RGB':
             image = image.convert('RGB')
 
-        # Préparer l'image
-        inputs = self.processor(image, return_tensors="pt").to(self.device)
-
-        # Générer une description
-        with torch.no_grad():
-            out = self.model.generate(**inputs, max_new_tokens=200)
-
+        text = "an image of "
+        inputs = self.processor(image, text, return_tensors="pt").to(self.device)
+        out = self.model.generate(**inputs, max_new_tokens=200)
         caption = self.processor.decode(out[0], skip_special_tokens=True)
         return caption
 
