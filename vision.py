@@ -36,7 +36,8 @@ if __name__ == "__main__":
     describer = ImageDescriber()
 
     try:
-        description = describer.describe_image(image_file)
+        with Image.open(image_file) as img:
+            description = describer.describe_image(img)
         print(f"🖼️ Description de l'image : {description}")
     except Exception as e:
         print(f"Erreur : {e}")
