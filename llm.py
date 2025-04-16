@@ -1,10 +1,18 @@
+import os
+import dotenv
 from litellm import completion
 from db import PDFCollectionManager
 
 class LLM:
-    def __init__(self, model: str = "ollama/mistral", api_base: str = "http://localhost:11434"):
-        self.model = model
-        self.api_base = api_base
+    def __init__(self):
+        dotenv.load_dotenv()
+        self.api_key = os.getenv("LITELLM_API_KEY")
+        self.api_base = os.getenv("LITELLM_API_BASE")
+        self.api_type = os.getenv("LITELLM_API_TYPE")    
+        self.model = os.getenv("LITELLM_API_MODEL")
+        if (self.api_base or not self.model):
+            raise ValueError("API base and model must be set in the environment variables.")
+        
         self.db = PDFCollectionManager()
 
     def ask(self, text: str, use_vector_db: bool = True):
@@ -34,7 +42,9 @@ class LLM:
             messages=[
                 {"content": prompt, "role": "system"},
                 {"content": text, "role": "user"}],
-            api_base=self.api_base
+            api_key=self.api_key,
+            api_base=self.api_base,
+            api_type=self.api_type,
         )
         return response.get("choices", [{}])[-1].get("message", {}).get("content", "")
 
