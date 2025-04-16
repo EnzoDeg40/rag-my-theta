@@ -10,7 +10,7 @@ class LLM:
         self.api_base = os.getenv("LITELLM_API_BASE")
         self.api_type = os.getenv("LITELLM_API_TYPE")    
         self.model = os.getenv("LITELLM_API_MODEL")
-        if (self.api_base or not self.model):
+        if (not self.api_base or not self.model):
             raise ValueError("API base and model must be set in the environment variables.")
         
         self.db = PDFCollectionManager()
