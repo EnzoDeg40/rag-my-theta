@@ -12,3 +12,4 @@ litellm
 # api
 fastapi
 uvicorn
+python-dotenv
