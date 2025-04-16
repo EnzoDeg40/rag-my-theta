@@ -4,6 +4,7 @@
 - Python 3
 - Weaviate
 - Docker
+- LiteLLM
 
 ## Installation
 
