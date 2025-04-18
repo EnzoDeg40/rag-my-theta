@@ -12,13 +12,6 @@ class InputData(BaseModel):
 class ConversationData(BaseModel):
     conversation: List[Dict[str, str]]
 
-@app.post("/hotels", response_model=str)
-def process_text(data: InputData):
-    print("Processes the client's request...")
-    response = ai.ask(data.text)
-    print(f"LLM Response: {response}")
-    return str(response)
-
 @app.post("/conversation", response_model=List[Dict[str, str]])
 def process_conversation(data: ConversationData):
     print("Processing conversation...")
