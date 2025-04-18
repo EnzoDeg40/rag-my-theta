@@ -12,3 +12,7 @@ litellm
 # api
 fastapi
 uvicorn
+
+langchain
+langchain-community
+langchain-ollama
