@@ -1,11 +1,13 @@
 from litellm import completion
 from db import PDFCollectionManager
+import agent
 
 class LLM:
     def __init__(self, model: str = "ollama/mistral", api_base: str = "http://localhost:11434"):
         self.model = model
         self.api_base = api_base
         self.db = PDFCollectionManager()
+        self.llm = agent.WeaviateAgent(model_name="mistral", temperature=0)
 
     def ask(self, text: str, use_vector_db: bool = True):
         results = []
@@ -49,12 +51,8 @@ class LLM:
             # Rien à faire si pas de message utilisateur
             return conversation
 
-        # Décider si on relance la recherche vectorielle
-        # (Ici, simple: on relance à chaque nouveau message utilisateur)
-        results = self.db.search(last_user_message, limit=3)
-        context = "Aucun contexte trouvé."
-        if results:
-            context = "\n\n".join([f'## File {r["file"]}: {r["content"]}' for r in results])
+        llm_reply = self.llm.run(last_user_message)
+        # conversation.append({"role": "system", "content": llm_reply})
 
         system_instruction = """You are an AI specialized as a travel agency assistant.  \
 Your task is to answer the user's question based on the provided context, which consists of PDF documents.  \
@@ -65,7 +63,7 @@ You must also provide a brief summary or useful information about the property o
 even if this information is already mentioned in the source documents.  \
 At the end of each answer, you must cite the sources — specifically the names of the PDF files where the information was found."""
 
-        prompt = f"Context: {context}\n\n{system_instruction}"
+        prompt = f"Context: {llm_reply}\n\n{system_instruction}"
 
         response = completion(
             model=self.model,
