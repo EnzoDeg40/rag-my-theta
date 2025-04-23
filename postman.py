@@ -1,10 +1,14 @@
+import os
 import litellm
+import dotenv
 import re
 import db
-
 class AIAgent:
-    def __init__(self, model_name="mistral"):
-        self.model_name = model_name
+    def __init__(self):
+        dotenv.load_dotenv(override=True)
+        self.api_key = os.getenv("LITELLM_API_KEY")
+        self.api_base = os.getenv("LITELLM_API_BASE")
+        self.model = os.getenv("LITELLM_API_MODEL")
         self.collection = db.PDFCollectionManager()
         self.local_conversation_history = []
         
@@ -41,8 +45,10 @@ class AIAgent:
     def decide_search(self) -> tuple[bool, str]:
         prompt = self._build_search_decision_prompt()
         response = litellm.completion(
-            model=self.model_name,
-            messages=[{"role": "user", "content": prompt}]
+            model=self.model,
+            messages=[{"role": "user", "content": prompt}],
+            api_key=self.api_key,
+            api_base=self.api_base,
         )
 
         content = response["choices"][0]["message"]["content"].strip().lower()
