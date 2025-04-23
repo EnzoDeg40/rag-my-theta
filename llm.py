@@ -1,12 +1,12 @@
 from litellm import completion
 from db import PDFCollectionManager
-import agent
+from postman import AIAgent
 
 class LLM:
     def __init__(self, model: str = "ollama/mistral", api_base: str = "http://localhost:11434"):
         self.model = model
         self.api_base = api_base
-        self.llm = agent.WeaviateAgent(model_name="mistral", temperature=0)
+        self.postman_agent = AIAgent(model_name="ollama/mistral")
 
     def handle_conversation(self, conversation: list[dict]) -> list[dict]:
         # Trouver le dernier message utilisateur
@@ -19,19 +19,11 @@ class LLM:
             # Rien à faire si pas de message utilisateur
             return conversation
 
-        llm_reply = self.llm.run(last_user_message)
-        # conversation.append({"role": "system", "content": llm_reply})
+        postman_reply = self.postman_agent.chat([(m["role"], m["content"]) for m in conversation])
 
-        system_instruction = """You are an AI specialized as a travel agency assistant.  \
-Your task is to answer the user's question based on the provided context, which consists of PDF documents.  \
-If the information in the PDFs is not sufficient to provide an accurate answer, you must clearly state that you cannot answer.  \
-You may also answer general questions, as long as they relate to travel, trip planning, or finding accommodation.  \
-Always respond in the user's language.  \
-You must also provide a brief summary or useful information about the property or destination in question,  \
-even if this information is already mentioned in the source documents.  \
-At the end of each answer, you must cite the sources — specifically the names of the PDF files where the information was found."""
-
-        prompt = f"Context: {llm_reply}\n\n{system_instruction}"
+        with open("prompts/llm.txt", "r") as file:
+            system_instruction = file.read().strip()
+        prompt = f"Context: {postman_reply}\n\n{system_instruction}"
 
         response = completion(
             model=self.model,
