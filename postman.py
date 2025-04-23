@@ -1,4 +1,5 @@
 import litellm
+import re
 import db
 
 class AIAgent:
@@ -10,9 +11,13 @@ class AIAgent:
     def chat(self, conversation: list[dict]) -> str:
         self.local_conversation_history = conversation
 
-        # 1. Décider s'il faut faire une recherche
         need_search, search_query = self.decide_search()
-        print(f"Need search: {need_search}, Search query: {search_query}")
+        if need_search is True:
+            print(f"\033[92mNeed search: {need_search}, Search query: {search_query}\033[0m")  # Green
+        elif need_search is False:
+            print(f"\033[91mNeed search: {need_search}, Search query: {search_query}\033[0m")  # Red
+        else:
+            print(f"\033[93mNeed search: {need_search}, Search query: {search_query}\033[0m")  # Yellow
 
         context_results = []
         if need_search and search_query:
@@ -25,6 +30,14 @@ class AIAgent:
 
         return assistant_reply
 
+
+    def get_first_clean_word(self, text: str) -> str:
+        text = text.lstrip("#. -_")
+        match = re.search(r'\b\w+\b', text)
+        if match:
+            return match.group(0).lower()
+        return ""
+
     def decide_search(self) -> tuple[bool, str]:
         prompt = self._build_search_decision_prompt()
         response = litellm.completion(
@@ -33,44 +46,40 @@ class AIAgent:
         )
 
         content = response["choices"][0]["message"]["content"].strip().lower()
+        print(f"\033[94mDecision content: {content}\033[0m")  # Blue
 
-        if content.startswith("yes"):
+        if self.get_first_clean_word(content) == "yes":
             search_query = content.split("search:", 1)[-1].strip()
             return True, search_query
         else:
             return False, ""
 
     def generate_reply(self, context_results: list) -> str:
-        system_prompt = "You are a helpful AI assistant."
-        # context_text = "\n\n".join(context_results) if context_results else ""
-        context_text = "\n\n".join([doc.get("content", "") for doc in context_results]) if context_results else ""
+        if not context_results:
+            return ""
 
-        messages = [{"role": "system", "content": system_prompt}]
+        result = ""
+        for doc in context_results:
+            file_name = doc.get("file")
+            content = doc.get("content", "")
+            result += f"### {file_name}\n{content}\n\n"
 
-        for role, message in self.local_conversation_history:
-            messages.append({"role": role, "content": message})
-
-        if context_text:
-            messages.append({"role": "system", "content": f"Use the following context to help answer:\n{context_text}"})
-
-        response = litellm.completion(
-            model=self.model_name,
-            messages=messages
-        )
-
-        return response["choices"][0]["message"]["content"].strip()
+        return result.strip()
 
     def _build_search_decision_prompt(self) -> str:
         formatted_history = "\n".join([
-            f"{role}: {message}" for role, message in self.local_conversation_history
+            f"### {role}\n{message}\n" for role, message in self.local_conversation_history
         ])
+        
+        print(f"\033[93m{formatted_history}\033[0m")
         
         return (
             f"Here is the conversation so far:\n{formatted_history}\n\n"
             "Decide whether you need to perform an external search to provide a better answer.\n"
             "Answer 'Yes' or 'No'.\n"
+            "The conversation helps to better understand what to look for but you should decide only from the user's last message.\n"
             "\n"
-            "Say 'Yes' if the user is asking for detailed or up-to-date information about a trip, hotel, destination, or travel-related topic that requires specific knowledge.\n"
+            "Say 'Yes' if the user is asking for detailed or up-to-date information about a trip, hotel, transports, destination, or travel-related topic that requires specific knowledge.\n"
             "Say 'No' if the user is just making casual conversation (e.g., greetings, general questions like the weather today, or common knowledge).\n"
             "\n"
             "If 'Yes', also specify what to search, and ensure the search query is in French.\n"
@@ -81,7 +90,7 @@ class AIAgent:
 
 # Exemple d'utilisation
 if __name__ == "__main__":
-    agent = AIAgent(model_name="ollama/mistral")
+    agent = AIAgent(model_name="ollama/llama3.1")
     conversation_history = [
         ("user", "Bonjour."),
         ("assistant", "Bonjour! Comment puis-je vous aider aujourd'hui?"),

@@ -21,6 +21,8 @@ class LLM:
 
         postman_reply = self.postman_agent.chat([(m["role"], m["content"]) for m in conversation])
 
+        print(f"\033[94mPostman reply: {postman_reply}\033[0m")
+
         with open("prompts/llm.txt", "r") as file:
             system_instruction = file.read().strip()
         prompt = f"Context: {postman_reply}\n\n{system_instruction}"
