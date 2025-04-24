@@ -7,7 +7,8 @@ Ce projet implémente un système de Retrieval-Augmented Generation (RAG) pour u
 1. **Base de données vectorielle** : Weaviate pour le stockage et la recherche des embeddings
 2. **Module d'extraction et d'indexation** : Traitement des PDFs et création des embeddings
 3. **Module LLM** : Interface avec un modèle de langage (Mistral via Ollama)
-4. **API REST** : Exposition des fonctionnalités via FastAPI
+4. **Agent de recherche** : Un agent dédié gère la recherche d'informations dans la base de données vectorielle
+5. **API REST** : Exposition des fonctionnalités via FastAPI
 
 ## Choix techniques
 
@@ -19,7 +20,15 @@ Ce projet implémente un système de Retrieval-Augmented Generation (RAG) pour u
 ### Modèle d'embeddings
 
 **Technologie** : BAAI/bge-m3 via Sentence Transformers
-**Justification** : Ce modèle offre un excellent rapport qualité/performance pour la création d'embeddings textuels multilangues. Il est particulièrement adapté pour notre cas d'usage qui requiert une bonne compréhension du français.
+**Justification** : Ce modèle offre un excellent rapport qualité/performance pour la création d'embeddings textuels multilingues. Il est particulièrement adapté à notre cas d'usage qui requiert une bonne compréhension du français.
+
+### Modèle de vision
+**Technologie** : Salesforce/blip-image-captioning-large  
+**Justification** : Ce modèle est conçu pour générer des descriptions d'images de haute qualité. Il est particulièrement utile pour extraire des informations visuelles pertinentes des premières pages des documents PDF, comme des images ou des graphiques, afin d'enrichir les métadonnées stockées dans la base de données vectorielle. Sa précision et sa capacité à comprendre le contexte visuel en font un choix idéal pour ce projet.
+
+### Découpage des tokens
+**Technologies** : NLTK, tiktoken
+**Justification** : Les textes des PDF sont segmentés en phrases à l’aide de nltk, puis ces phrases sont regroupées en blocs ne dépassant pas un certain nombre de tokens (50 ici), mesurés avec tiktoken. Cela permet de gérer efficacement la taille des prompts envoyés au modèle de langage tout en préservant le sens du texte. 
 
 ### Traitement des PDFs
 
@@ -29,7 +38,12 @@ Ce projet implémente un système de Retrieval-Augmented Generation (RAG) pour u
 ### LLM
 
 **Technologie** : Mistral via Ollama
-**Justification** : Mistral est un modèle de langage open-source performant pour la génération de texte, tout en étant suffisamment léger pour être exécuté localement. Ollama facilite son utilisation grâce à une interface simple. Cependant, pour respecter les consignes de l'exercice qui demandait l'utilisation de ChatGPT-4o, l’API a été développée avec FastAPI, qui interroge Ollama en arrière-plan. Cela signifie que la configuration peut être facilement adaptée pour utiliser ChatGPT-4o à la place de Mistral, si nécessaire.
+**Justification** : Mistral est un modèle de langage open-source performant pour la génération de texte, tout en étant suffisamment léger pour être exécuté localement. Ollama facilite son utilisation grâce à une interface simple. Cependant, pour respecter les consignes de l'exercice qui demandaient l'utilisation de ChatGPT-4o, l’API a été développée avec FastAPI, qui interroge Ollama en arrière-plan. Cela signifie que la configuration peut être facilement adaptée pour utiliser ChatGPT-4o à la place de Mistral, si nécessaire.
+
+### Agent de recherche
+
+**Technologie** : Python
+**Justification** : L'agent de recherche est un module Python qui peut rechercher des informations dans la base de données vectorielle. À partir de la conversation entre le LLM et l'utilisateur, il décide si une recherche documentaire est nécessaire. Il interroge ensuite Weaviate pour récupérer les documents pertinents. Ce module est essentiel pour enrichir le contexte de la réponse générée par le LLM. J'avais essayé d'utiliser LangChain pour cette partie, mais beaucoup de choses n'étaient pas modulables et je n'ai pas pu l'adapter à mes besoins. J'ai donc décidé de créer un module Python sur mesure qui répond à mes besoins.
 
 ### API
 
@@ -41,25 +55,24 @@ Ce projet implémente un système de Retrieval-Augmented Generation (RAG) pour u
 1. **Indexation des documents**
    - Lecture des fichiers PDF du dossier `data`
    - Extraction du texte via PyMuPDF
+   - Découpage du texte en segments d'environ 50 tokens
    - Génération d'embeddings via BAAI/bge-m3
+   - Description des 3 premières images avec un modèle de vision
    - Stockage dans Weaviate avec métadonnées (nom du fichier source)
 
 2. **Traitement des requêtes**
    - Réception d'une requête texte via l'API
-   - Génération de l'embedding de la requête
-   - Recherche des documents similaires dans Weaviate
-   - Extraction des documents les plus pertinents
-   - Construction d'un prompt enrichi pour le LLM avec le contexte trouvé
-   - Génération d'une réponse par le LLM
-   - Renvoi de la réponse à l'utilisateur
+   - Le module LLM analyse l'historique de la conversation
+   - Il sollicite l'agent de recherche (postman.py) pour décider s'il faut effectuer une recherche documentaire
+   - Si oui, l'agent interroge Weaviate et prépare un contexte pertinent
+   - Le LLM construit un prompt enrichi avec ce contexte et génère une réponse
+   - La réponse est renvoyée à l'utilisateur
 
 ## Performances et améliorations
 
-Les tests réalisés (voir `tests/results.txt`) montrent que le système est capable de répondre efficacement à des questions sur les propriétés disponibles, en puisant dans les informations contenues dans les PDFs. La qualité des réponses dépend fortement de la qualité des documents indexés et de la pertinence de la recherche vectorielle.
+Le test réalisé (voir `tests/result.md`) montre que le système est capable de répondre efficacement à des questions sur les propriétés disponibles, en puisant dans les informations contenues dans les PDFs. La qualité des réponses dépend fortement de la qualité des documents indexés et de la pertinence de la recherche vectorielle effectuée par l'agent.
 
 Améliorations possibles :
-- Implémentation de techniques de chunking plus avancées pour diviser les documents en segments plus petits
 - Ajout d'un système de filtrage pour éliminer les documents non pertinents
 - Optimisation des paramètres de recherche vectorielle
-- Tests avec d'autres modèles d'embeddings et LLMs
 - Mise en place d'un système de feedback pour améliorer les résultats au fil du temps
