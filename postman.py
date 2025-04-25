@@ -34,7 +34,6 @@ class AIAgent:
 
         return assistant_reply
 
-
     def get_first_clean_word(self, text: str) -> str:
         text = text.lstrip("#. -_")
         match = re.search(r'\b\w+\b', text)
@@ -44,14 +43,17 @@ class AIAgent:
 
     def decide_search(self) -> tuple[bool, str]:
         prompt = self._build_search_decision_prompt()
-        response = litellm.completion(
-            model=self.model,
-            messages=[{"role": "user", "content": prompt}],
-            api_key=self.api_key,
-            api_base=self.api_base,
-        )
-
-        content = response["choices"][0]["message"]["content"].strip().lower()
+        try:
+            response = litellm.completion(
+                model=self.model,
+                messages=[{"role": "user", "content": prompt}],
+                api_key=self.api_key,
+                api_base=self.api_base,
+            )
+            content = response["choices"][0]["message"]["content"].strip().lower()
+        except Exception as e:
+            print(f"Erreur lors de l'appel à litellm.completion: {e}")
+            return False, ""
         print(f"\033[94mDecision content: {content}\033[0m")  # Blue
 
         if self.get_first_clean_word(content) == "yes":
@@ -91,8 +93,6 @@ class AIAgent:
             "If 'Yes', also specify what to search, and ensure the search query is in French.\n"
             "Format: 'Yes. Search: <search query>' or 'No.'"
         )
-
-
 
 # Exemple d'utilisation
 if __name__ == "__main__":
