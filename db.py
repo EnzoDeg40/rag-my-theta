@@ -13,14 +13,18 @@ class PDFCollectionManager:
 
         self.client = weaviate.connect_to_local()
        
-        self.device = "cpu"
-        if torch.cuda.is_available():
-            self.device = "cuda"
-        elif torch.backends.mps.is_available():
-            self.device = "mps"
+        self.device = self._get_device()
         print(f"Using device for {__class__.__name__}: {self.device}")
 
         self.model = SentenceTransformer(self.model_name, device=self.device)
+
+    def _get_device(self):
+        if torch.backends.mps.is_available():
+            return torch.device("mps")
+        elif torch.cuda.is_available():
+            return torch.device("cuda")
+        else:
+            return torch.device("cpu")
 
     def create_collection(self):
         if self.client.collections.exists(self.collection_name):
