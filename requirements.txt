@@ -3,6 +3,8 @@ PyMuPDF
 weaviate-client
 transformers==4.46.2
 sentence-transformers==3.4.1
+nltk
+tiktoken
 
 # llm
 litellm
@@ -10,3 +12,6 @@ litellm
 # api
 fastapi
 uvicorn
+
+# global
+python-dotenv

@@ -13,14 +13,18 @@ class PDFCollectionManager:
 
         self.client = weaviate.connect_to_local()
        
-        device = "cpu"
-        if torch.cuda.is_available():
-            device = "cuda"
-        elif torch.backends.mps.is_available():
-            device = "mps"
-        print(f"Using device: {device}")
+        self.device = self._get_device()
+        print(f"Using device for {__class__.__name__}: {self.device}")
 
-        self.model = SentenceTransformer(self.model_name, device=device)
+        self.model = SentenceTransformer(self.model_name, device=self.device)
+
+    def _get_device(self):
+        if torch.backends.mps.is_available():
+            return torch.device("mps")
+        elif torch.cuda.is_available():
+            return torch.device("cuda")
+        else:
+            return torch.device("cpu")
 
     def create_collection(self):
         if self.client.collections.exists(self.collection_name):
@@ -31,6 +35,8 @@ class PDFCollectionManager:
             properties=[
                 wvc.config.Property(name="content", data_type=wvc.config.DataType.TEXT),
                 wvc.config.Property(name="file", data_type=wvc.config.DataType.TEXT),
+                wvc.config.Property(name="chunk", data_type=wvc.config.DataType.NUMBER),
+                wvc.config.Property(name="type", data_type=wvc.config.DataType.TEXT),
             ],
             vectorizer_config=wvc.config.Configure.Vectorizer.none(),
         )
@@ -43,24 +49,36 @@ class PDFCollectionManager:
         self.client.collections.delete(self.collection_name)
         print(f"Collection '{self.collection_name}' removed.")
    
-    def add_document(self, file_path: str, content: str):
+    def add_document_chunked(self, file_path: str, chunk_text: list[str], images: list = None):
         pdfdoc = self.client.collections.get(self.collection_name)
 
         if self.is_document_in_collection(file_path, pdfdoc):
             print(f"Document '{file_path}' already exists in the collection.")
             return
-        
-        vector = self.model.encode(content, convert_to_tensor=True).cpu().tolist()
-        pdfdoc.data.insert({
-            "content": content,
-            "file": file_path,
-        }, vector=vector)
-        print(f"Document '{file_path}' added to collection.")
 
+        for i, chunk_text in enumerate(chunk_text):
+            vector = self.model.encode(chunk_text, convert_to_tensor=True).to(self.device).tolist()
+            pdfdoc.data.insert({
+                "content": chunk_text,
+                "file": file_path,
+                "chunk": i,
+                "type": "text"
+            }, vector=vector)
+    
+        if images:
+            for i, image in enumerate(images):
+                vector = self.model.encode(image, convert_to_tensor=True).to(self.device).tolist()
+                pdfdoc.data.insert({
+                    "content": image,
+                    "file": file_path,
+                    "chunk": i,
+                    "type": "image"
+                }, vector=vector)
+        
 
     def search(self, query: str, limit: int = 10):
         pdfdoc = self.client.collections.get(self.collection_name)
-        vector = self.model.encode(query, convert_to_tensor=True).cpu().tolist()
+        vector = self.model.encode(query, convert_to_tensor=True).to(self.device).tolist()
 
         results = pdfdoc.query.near_vector(
             near_vector=vector,
@@ -75,9 +93,34 @@ class PDFCollectionManager:
             results_list.append({
                 "content": obj.properties["content"],
                 "file": obj.properties["file"],
+                "chunk": obj.properties["chunk"],
                 "distance": obj.metadata.distance
             })
         
+        return results_list
+    
+    def search_in_file(self, file_path: str, query: str, limit: int = 10):
+        pdfdoc = self.client.collections.get(self.collection_name)
+        vector = self.model.encode(query, convert_to_tensor=True).to(self.device).tolist()
+
+        results = pdfdoc.query.near_vector(
+            near_vector=vector,
+            filters=wvc.query.Filter.by_property("file").equal(file_path),
+            limit=limit,
+            return_metadata=["distance"],  # or 'certainty'
+            return_properties=True
+        )
+
+        results_list = []
+
+        for obj in results.objects:
+            results_list.append({
+                "content": obj.properties["content"],
+                "file": obj.properties["file"],
+                "chunk": obj.properties["chunk"],
+                "distance": obj.metadata.distance
+            })
+
         return results_list
 
     def print_search_results(self, results):
@@ -96,6 +139,11 @@ class PDFCollectionManager:
 
 if __name__ == "__main__":
     manager = PDFCollectionManager()
-    manager.remove_collection()
-    manager.create_collection()
+    # manager.remove_collection()
+    # manager.create_collection()
+    
+    search_results = manager.search_in_file("BLM.pdf", "Quels sont les transports disponibles ?", limit=3)
+    print("Search results:")
+    manager.print_search_results(search_results)
+    
     manager.close()

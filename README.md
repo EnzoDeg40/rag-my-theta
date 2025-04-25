@@ -4,6 +4,7 @@
 - Python 3
 - Weaviate
 - Docker
+- LiteLLM
 
 ## Installation
 
@@ -28,8 +29,12 @@ pip install -r requirements.txt
 ```
 
 ### LiteLLM
-> [!IMPORTANT]
-> Currently, Litellm connects to the Ollama Mistral model by default. To change this configuration, you need to modify the `llm.py` file at the initialization of the class.
+
+A `.env.template` file is available in the project. Duplicate it and rename the copy to `.env`. Then, fill in the required environment variables as specified in the template.
+```
+cp .env.template .env
+nano .env
+```
 
 ## Usage
 
@@ -46,7 +51,7 @@ uvicorn api:app
 
 To test the API, you can use the following command:
 ```bash
-./request.bash "<your_query>"
+python client.py
 ```
 
 ## Report
