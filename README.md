@@ -50,7 +50,7 @@ uvicorn api:app
 ```
 
 To test the API, you can use the following command:
-```python
+```bash
 python client.py
 ```
 

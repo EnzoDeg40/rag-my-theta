@@ -13,10 +13,5 @@ litellm
 fastapi
 uvicorn
 
-# agent
-langchain
-langchain-community
-langchain-ollama
-
 # global
 python-dotenv
