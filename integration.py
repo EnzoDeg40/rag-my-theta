@@ -69,7 +69,8 @@ class PDFImporter:
             for pixmap in pixmaps:
                 pil_image = self.pixmap_to_pil(pixmap)
                 caption = self.vision.describe_image(pil_image)
-                pdf_images.append(caption)
+                if caption:
+                    pdf_images.append(caption)
 
             textchunker = textchunk.TextChunker(max_tokens=150)
             textlist = textchunker.chunk(pdf_content)

@@ -28,25 +28,36 @@ class LLM:
 
         print(f"\033[94mPostman reply: {postman_reply}\033[0m")
 
-        with open("prompts/llm.txt", "r") as file:
-            system_instruction = file.read().strip()
+        try:
+            with open("prompts/llm.txt", "r") as file:
+                system_instruction = file.read().strip()
+        except Exception as e:
+            print(f"Erreur lors de la lecture du fichier system prompt: {e}")
+            system_instruction = ""
         prompt = f"Context: {postman_reply}\n\n{system_instruction}"
 
-        response = completion(
-            model=self.model,
-            messages=[
-                {"content": prompt, "role": "system"},
-                *conversation  # Ajoute tout l'historique
-            ],
-            api_key=self.api_key,
-            api_base=self.api_base,
-        )
-        llm_reply = response.get("choices", [{}])[-1].get("message", {}).get("content", "")
+        try:
+            response = completion(
+                model=self.model,
+                messages=[
+                    {"content": prompt, "role": "system"},
+                    *conversation  # Ajoute tout l'historique
+                ],
+                api_key=self.api_key,
+                api_base=self.api_base,
+            )
+            llm_reply = response.get("choices", [{}])[-1].get("message", {}).get("content", "")
+        except Exception as e:
+            print(f"Erreur lors de l'appel au LLM: {e}")
+            llm_reply = "Désolé, une erreur technique est survenue lors de la génération de la réponse."
         conversation.append({"role": "assistant", "content": llm_reply})
         return conversation
 
 if __name__ == "__main__":
     llm = LLM()
     text = "Trouve moi un hotel proche de la plage."
-    response = llm.ask(text)
-    print(f"LLM Response: {response}")
+    try:
+        response = llm.ask(text)
+        print(f"LLM Response: {response}")
+    except Exception as e:
+        print(f"Erreur lors de l'appel à LLM: {e}")

@@ -51,7 +51,7 @@ uvicorn api:app
 
 To test the API, you can use the following command:
 ```bash
-./request.bash "<your_query>"
+python client.py
 ```
 
 ## Report
