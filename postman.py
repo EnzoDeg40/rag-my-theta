@@ -1,8 +1,30 @@
 import os
-import litellm
 import dotenv
-import re
+import litellm
 import db
+
+DECIDE_SEARCH_TOOL = {
+    "type": "function",
+    "function": {
+        "name": "decide_search",
+        "description": "Decides whether a search is needed and which query to use.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "need_search": {
+                    "type": "boolean",
+                    "description": "Indicates whether an external search is required."
+                },
+                "search_query": {
+                    "type": "string",
+                    "description": "Search query to execute if needed."
+                }
+            },
+            "required": ["need_search", "search_query"]
+        }
+    }
+}
+
 class AIAgent:
     def __init__(self):
         dotenv.load_dotenv(override=True)
@@ -11,60 +33,81 @@ class AIAgent:
         self.model = os.getenv("LITELLM_API_MODEL")
         self.collection = db.PDFCollectionManager()
         self.local_conversation_history = []
-        
-    def chat(self, conversation: list[dict]) -> str:
+
+    def chat(self, conversation: list[tuple[str, str]]) -> str:
         self.local_conversation_history = conversation
 
-        need_search, search_query = self.decide_search()
-        if need_search is True:
-            print(f"\033[92mNeed search: {need_search}, Search query: {search_query}\033[0m")  # Green
-        elif need_search is False:
-            print(f"\033[91mNeed search: {need_search}, Search query: {search_query}\033[0m")  # Red
-        else:
-            print(f"\033[93mNeed search: {need_search}, Search query: {search_query}\033[0m")  # Yellow
+        # ask the AI to decide if a search is needed
+        tool_call = self.decide_search_tool_call()
 
-        context_results = []
-        if need_search and search_query:
+        # display the decision
+        need_search = tool_call.get("need_search", False)
+        search_query = tool_call.get("search_query", "")
+
+        if need_search:
+            print(f"\033[92mRecherche requise: {search_query}\033[0m")
             context_results = self.collection.search(search_query)
+        else:
+            print(f"\033[91mPas de recherche requise.\033[0m")
+            context_results = []
 
-        # 2. Générer une réponse en utilisant le contexte (s'il y en a)
+        # generate the AI's reply based on the context
         assistant_reply = self.generate_reply(context_results)
-
         self.local_conversation_history.append(("assistant", assistant_reply))
 
         return assistant_reply
 
-    def get_first_clean_word(self, text: str) -> str:
-        text = text.lstrip("#. -_")
-        match = re.search(r'\b\w+\b', text)
-        if match:
-            return match.group(0).lower()
-        return ""
+    def decide_search_tool_call(self) -> dict:
+        messages = [
+            {
+                "role": "system",
+                "content": (
+                    "You are a smart travel assistant.\n\n"
+                    "Your task is to decide whether an external search is required based on the user's last message in the conversation.\n\n"
+                    "Always use the `decide_search` function tool when the user is asking about detailed or up-to-date information "
+                    "related to travel — like hotels, destinations, trips, transportation, events, beaches, or places that need specific knowledge.\n\n"
+                    "Do NOT use the tool if the user is just being social (e.g. saying hello), asking general facts, or saying something common-sense.\n\n"
+                    "If a search is needed, set `need_search=true` and provide a concise French search query in `search_query`.\n\n"
+                    "Examples:\n"
+                    "- User: Bonjour → need_search=false, search_query=''\n"
+                    "- User: Peux-tu me recommander un hôtel à Barcelone ? → need_search=true, search_query='hôtel à Barcelone'\n"
+                    "- User: Que puis-je visiter à Paris cet été ? → need_search=true, search_query='activités à Paris été'\n"
+                    "- User: Quel temps fait-il ? → need_search=false, search_query=''\n"
+                    "- User: Salut comment ça va ? → need_search=false, search_query=''\n"
+                    "- User: Je cherche un voyage près de la plage → need_search=true, search_query='voyage près de la plage'\n"
+                )
+            }
+        ]
 
-    def decide_search(self) -> tuple[bool, str]:
-        prompt = self._build_search_decision_prompt()
+        for role, content in self.local_conversation_history:
+            messages.append({"role": role, "content": content})
+
         try:
             response = litellm.completion(
                 model=self.model,
-                messages=[{"role": "user", "content": prompt}],
                 api_key=self.api_key,
                 api_base=self.api_base,
+                messages=messages,
+                tools=[DECIDE_SEARCH_TOOL],
+                tool_choice="auto"
             )
-            content = response["choices"][0]["message"]["content"].strip().lower()
+
+            # Cherche un appel de fonction tool
+            tool_calls = response.get("choices", [])[0].get("message", {}).get("tool_calls", [])
+            if tool_calls:
+                tool_args = tool_calls[0]["function"]["arguments"]
+                import json
+                return json.loads(tool_args)
+
         except Exception as e:
-            print(f"Erreur lors de l'appel à litellm.completion: {e}")
-            return False, ""
-        print(f"\033[94mDecision content: {content}\033[0m")  # Blue
+            print(f"Erreur durant l'appel LiteLLM: {e}")
+            return {"need_search": False, "search_query": ""}
 
-        if self.get_first_clean_word(content) == "yes":
-            search_query = content.split("search:", 1)[-1].strip()
-            return True, search_query
-        else:
-            return False, ""
+        return {"need_search": False, "search_query": ""}
 
-    def generate_reply(self, context_results: list) -> str:
+    def generate_reply(self, context_results: list[dict]) -> str:
         if not context_results:
-            return ""
+            return "Aucun contexte généré"
 
         result = ""
         for doc in context_results:
@@ -74,39 +117,15 @@ class AIAgent:
 
         return result.strip()
 
-    def _build_search_decision_prompt(self) -> str:
-        formatted_history = "\n".join([
-            f"### {role}\n{message}\n" for role, message in self.local_conversation_history
-        ])
-        
-        print(f"\033[93m{formatted_history}\033[0m")
-        
-        return (
-            f"Here is the conversation so far:\n{formatted_history}\n\n"
-            "Decide whether you need to perform an external search to provide a better answer.\n"
-            "Answer 'Yes' or 'No'.\n"
-            "The conversation helps to better understand what to look for but you should decide only from the user's last message.\n"
-            "\n"
-            "Say 'Yes' if the user is asking for detailed or up-to-date information about a trip, hotel, transports, destination, or travel-related topic that requires specific knowledge.\n"
-            "Say 'No' if the user is just making casual conversation (e.g., greetings, general questions like the weather today, or common knowledge).\n"
-            "\n"
-            "If 'Yes', also specify what to search, and ensure the search query is in French.\n"
-            "Format: 'Yes. Search: <search query>' or 'No.'"
-        )
 
-# Exemple d'utilisation
+# Exemple d’utilisation
 if __name__ == "__main__":
-    agent = AIAgent(model_name="ollama/llama3.1")
+    agent = AIAgent()
     conversation_history = [
         ("user", "Bonjour."),
         ("assistant", "Bonjour! Comment puis-je vous aider aujourd'hui?"),
-        ("user", "je cherche un hôtel près de la plage.")
+        ("user", "je cherche un croisiere proche de la mer"),
     ]
 
     response = agent.chat(conversation_history)
     print(f"Agent: {response}")
-
-    # while True:
-    #     user_input = input("You: ")
-    #     response = agent.chat(user_input)
-    #     print(f"Assistant: {response}")
