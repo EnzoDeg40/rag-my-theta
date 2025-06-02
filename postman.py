@@ -2,6 +2,7 @@ import os
 import dotenv
 import litellm
 import db
+import reranker
 
 DECIDE_SEARCH_TOOL = {
     "type": "function",
@@ -33,6 +34,7 @@ class AIAgent:
         self.model = os.getenv("LITELLM_API_MODEL")
         self.collection = db.PDFCollectionManager()
         self.local_conversation_history = []
+        self.reranke = reranker.CrossEncoderReranker()
 
     def chat(self, conversation: list[tuple[str, str]]) -> str:
         self.local_conversation_history = conversation
@@ -47,6 +49,18 @@ class AIAgent:
         if need_search:
             print(f"\033[92mRecherche requise: {search_query}\033[0m")
             context_results = self.collection.search(search_query)
+            # Rerank context_results si non vide
+            if context_results:
+                docs = [doc.get("content", "") for doc in context_results]
+                reranked = self.reranke.rerank(search_query, docs)
+                # Associer les scores/documents aux fichiers d'origine
+                reranked_context = []
+                for (score, content) in reranked:
+                    for doc in context_results:
+                        if doc.get("content", "") == content:
+                            reranked_context.append({"file": doc.get("file"), "content": content, "score": score})
+                            break
+                context_results = reranked_context
         else:
             print(f"\033[91mPas de recherche requise.\033[0m")
             context_results = []
@@ -113,7 +127,11 @@ class AIAgent:
         for doc in context_results:
             file_name = doc.get("file")
             content = doc.get("content", "")
-            result += f"### {file_name}\n{content}\n\n"
+            score = doc.get("score", None)
+            if score is not None:
+                result += f"### {file_name} (score: {score:.4f})\n{content}\n\n"
+            else:
+                result += f"### {file_name}\n{content}\n\n"
 
         return result.strip()
 
